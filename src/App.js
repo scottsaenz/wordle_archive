@@ -28,7 +28,7 @@ const getDayAnswer = (day_) => {
 }
 
 const getDay = () => {
-  const today = new Date()
+  const today = new Date('1/21/22')
   const date1 = new Date('6/21/21')
   const diffTime = Math.abs(today - date1)
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
@@ -44,8 +44,11 @@ for (var i=1;i<=og_day;i++) {
 }
 
 function App() {
+  const reloadCount = Number(sessionStorage.getItem('reloadCount')) || 0;
+  
   const initialStates = {
-    answer: () => getDayAnswer(day),
+    day: () => getDay(),
+    answer: () => getDayAnswer(getDay()),
     gameState: state.playing,
     board: [
       ['', '', '', '', ''],
@@ -65,15 +68,40 @@ function App() {
       })
       return letterStatuses
     },
+    // letterStatuses: useLocalStorage('letterStatuses', () => {
+    //   const letterStatuses = {}
+    //   letters.forEach((letter) => {
+    //     letterStatuses[letter] = status.unguessed
+    //   })
+    //   return letterStatuses
+    // }),
   }
-  const [answer, setAnswer] = useState(initialStates.answer)
+  console.log(Object.keys(localStorage))
+  console.log(localStorage.getItem('gameStateList'))
+
+  var answer = getDayAnswer(day)
+  
   const [gameState, setGameState] = useState(initialStates.gameState)
+  const [gameStateList, setGameStateList] = useLocalStorage('gameStateList', Array(220).fill(initialStates.gameState))
+  
   const [board, setBoard] = useState(initialStates.board)
+  const [boardList, setBoardList] = useLocalStorage('boardList', Array(220).fill(initialStates.board))
+  
   const [cellStatuses, setCellStatuses] = useState(initialStates.cellStatuses)
+  const [cellStatusesList, setCellStatusesList] = useLocalStorage('cellStatusesList', Array(220).fill(initialStates.cellStatuses))
+  
   const [currentRow, setCurrentRow] = useState(initialStates.currentRow)
+  const [currentRowList, setCurrentRowList] = useLocalStorage('currentRowList', Array(220).fill(initialStates.currentRow))
+
   const [currentCol, setCurrentCol] = useState(initialStates.currentCol)
+  const [currentColList, setCurrentColList] = useLocalStorage('currentColList', Array(220).fill(initialStates.currentCol))
+
   const [letterStatuses, setLetterStatuses] = useState(initialStates.letterStatuses)
+  const [letterStatusesList, setLetterStatusesList] = useLocalStorage('letterStatusesList', Array(220).fill(initialStates.letterStatuses))
+
   const [submittedInvalidWord, setSubmittedInvalidWord] = useState(false)
+  const [submittedInvalidWordList, setSubmittedInvalidWordList] = useLocalStorage('submittedInvalidWordList', Array(220).fill(false))
+
   const [currentStreak, setCurrentStreak] = useLocalStorage('current-streak', 0)
   const [longestStreak, setLongestStreak] = useLocalStorage('longest-streak', 0)
   const streakUpdated = useRef(false)
@@ -116,6 +144,34 @@ function App() {
       }
     }
   }, [gameState, currentStreak, longestStreak, setLongestStreak, setCurrentStreak])
+
+  useEffect(() => {
+    console.log('this happened on refresh')
+    console.log(day)
+    console.log(localStorage.getItem('gameStateList'))
+    console.log(gameStateList)
+    if (gameStateList[day] == state.playing) {
+      setGameStateList(gameStateList)
+      setBoardList(boardList)
+      setCellStatusesList(cellStatusesList)
+      setCurrentRowList(currentRowList)
+      setCurrentColList(currentColList)
+      setLetterStatusesList(letterStatusesList)
+      setSubmittedInvalidWordList(submittedInvalidWordList)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (reloadCount < 1) {
+      console.log('this happened before refresh')
+      console.log(localStorage.getItem('gameStateList'))
+      window.location.reload(true);
+      console.log(localStorage.getItem('gameStateList'))
+      sessionStorage.setItem('reloadCount', String(reloadCount + 1));
+    } else {
+      sessionStorage.removeItem('reloadCount');
+    }
+  }, [og_day])
 
   const getCellStyles = (rowNumber, colNumber, letter) => {
     if (rowNumber === currentRow) {
@@ -234,8 +290,14 @@ function App() {
 
     if (lastFilledRow && isRowAllGreen(lastFilledRow)) {
       setGameState(state.won)
+      var newGameStateList = JSON.parse(localStorage.getItem('gameStateList'))
+      newGameStateList[day-1] = state.won
+      localStorage.setItem('gameStateList', JSON.stringify(newGameStateList))
     } else if (currentRow === 6) {
       setGameState(state.lost)
+      var newGameStateList = JSON.parse(localStorage.getItem('gameStateList'))
+      newGameStateList[day-1] = state.lost
+      localStorage.setItem('gameStateList', JSON.stringify(newGameStateList))
     }
   }, [cellStatuses, currentRow])
 
@@ -289,40 +351,92 @@ function App() {
     },
   }
 
+  const cache = () => {
+    var newBoardList = JSON.parse(localStorage.getItem('boardList'))
+    var newGameStateList = JSON.parse(localStorage.getItem('gameStateList'))
+    var newCellStatusesList = JSON.parse(localStorage.getItem('cellStatusesList'))
+    var newCurrentRowList = JSON.parse(localStorage.getItem('currentRowList'))
+    var newCurrentColList = JSON.parse(localStorage.getItem('currentColList'))
+    var newLetterStatusesList = JSON.parse(localStorage.getItem('letterStatusesList'))
+    var newSubmittedInvalidWordList = JSON.parse(localStorage.getItem('submittedInvalidWordList'))
+
+    newBoardList[day-1] = board
+    newGameStateList[day-1] = gameState
+    newCellStatusesList[day-1] = cellStatuses
+    newCurrentRowList[day-1] = currentRow
+    newCurrentColList[day-1] = currentCol
+    newLetterStatusesList[day-1] = letterStatuses
+    newSubmittedInvalidWordList[day-1] = submittedInvalidWord
+    
+    localStorage.setItem('boardList', JSON.stringify(newBoardList))
+    localStorage.setItem('gameStateList', JSON.stringify(newGameStateList))
+    localStorage.setItem('cellStatusesList', JSON.stringify(newCellStatusesList))
+    localStorage.setItem('currentRowList', JSON.stringify(newCurrentRowList))
+    localStorage.setItem('currentColList', JSON.stringify(newCurrentColList))
+    localStorage.setItem('letterStatusesList', JSON.stringify(newLetterStatusesList))
+    localStorage.setItem('submittedInvalidWordList', JSON.stringify(newSubmittedInvalidWordList))
+  }
+
   const play = () => {
-    setAnswer(initialStates.answer)
+    // check for keys in localstorage using one key
+    var newBoardList = JSON.parse(localStorage.getItem('boardList'))
+    var newCellStatusesList = JSON.parse(localStorage.getItem('cellStatusesList'))
+    var newCurrentRowList = JSON.parse(localStorage.getItem('currentRowList'))
+    var newCurrentColList = JSON.parse(localStorage.getItem('currentColList'))
+    var newLetterStatusesList = JSON.parse(localStorage.getItem('letterStatusesList'))
+    var newSubmittedInvalidWordList = JSON.parse(localStorage.getItem('submittedInvalidWordList'))
+
+    if (newBoardList[day-1][0][0] == "") {
+      setBoard(initialStates.board)
+      setCellStatuses(initialStates.cellStatuses)
+      setCurrentRow(initialStates.currentRow)
+      setCurrentCol(initialStates.currentCol)
+      setLetterStatuses(initialStates.letterStatuses)
+      setSubmittedInvalidWord(false)
+    }
+    else {
+      setGameState(state.playing)
+      setBoard(newBoardList[day-1])
+      setCellStatuses(newCellStatusesList[day-1])
+      setCurrentRow(newCurrentRowList[day-1])
+      setCurrentCol(newCurrentColList[day-1])
+      setLetterStatuses(newLetterStatusesList[day-1])
+      setSubmittedInvalidWord(newSubmittedInvalidWordList[day-1])
+    }
+    answer = getDayAnswer(day)
     setGameState(initialStates.gameState)
-    setBoard(initialStates.board)
-    setCellStatuses(initialStates.cellStatuses)
-    setCurrentRow(initialStates.currentRow)
-    setCurrentCol(initialStates.currentCol)
-    setLetterStatuses(initialStates.letterStatuses)
   }
   const playFirst = () => {
+    cache()
     day = 1
     play()
   }
   const playPrevious = () => {
+    cache()
     if (day > 1) {
-      day = day - 1
+      day = day -1
     }
     play()
   }
   const playRandom = () => {
+    cache()
     day = Math.floor(Math.random() * (og_day-1)) + 1
     play()
   }
   const playNext = () => {
+    cache()
     if (day < og_day) {
       day = day + 1
     }
     play()
   }
   const playLast = () => {
+    cache()
     day = og_day
     play()
   }
   const playDay = (i) => {
+    cache()
     day = i
     play()
   }
@@ -455,13 +569,6 @@ function App() {
             longestStreak={longestStreak}
             answer={answer}
             playAgain={() => {
-              // setAnswer(initialStates.answer)
-              // setGameState(initialStates.gameState)
-              // setBoard(initialStates.board)
-              // setCellStatuses(initialStates.cellStatuses)
-              // setCurrentRow(initialStates.currentRow)
-              // setCurrentCol(initialStates.currentCol)
-              // setLetterStatuses(initialStates.letterStatuses)
               closeModal()
               streakUpdated.current = false
             }}
@@ -488,6 +595,7 @@ function App() {
     )
   }
   else {
+    console.log(board)
     return (
       <div className={darkMode ? 'dark h-fill' : 'h-fill'}>
         <div className={`flex flex-col justify-between h-fill bg-background dark:bg-background-dark`}>
